@@ -18,29 +18,35 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  Mail,
+  User
 } from 'lucide-react';
 import './App.css';
 
 const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 
 function App() {
-  const [telegramId, setTelegramId] = useState('');
+  const [email, setEmail] = useState('');
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchDashboard = async (id) => {
-    if (!id) return;
+  const fetchDashboard = async (userEmail) => {
+    if (!userEmail) return;
     
     setLoading(true);
     setError('');
     
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/dashboard/${id}`);
+      const response = await axios.get(`${API_BASE_URL}/api/dashboard/email/${encodeURIComponent(userEmail)}`);
       setDashboardData(response.data);
+      
+      if (!response.data.user) {
+        setError('Email não encontrado. Certifique-se de ter enviado seu email para o bot primeiro.');
+      }
     } catch (err) {
-      setError('Erro ao carregar dados. Verifique o ID do Telegram.');
+      setError('Erro ao carregar dados. Verifique o email.');
       console.error('Error fetching dashboard:', err);
     } finally {
       setLoading(false);
@@ -49,7 +55,11 @@ function App() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    fetchDashboard(telegramId);
+    if (email && email.includes('@')) {
+      fetchDashboard(email);
+    } else {
+      setError('Por favor, digite um email válido.');
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -168,12 +178,13 @@ function App() {
                 <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
                   <div className="flex items-center space-x-3 mb-2">
                     <MessageSquare className="w-5 h-5 text-blue-400" />
-                    <span className="font-semibold">Exemplo de uso:</span>
+                    <span className="font-semibold">Como usar:</span>
                   </div>
                   <div className="space-y-2 text-sm text-slate-300">
-                    <div>"Paguei R$ 500 de aluguel"</div>
-                    <div>"Recebi R$ 2000 de salário"</div>
-                    <div>"Gastei 50 no supermercado"</div>
+                    <div>1. Envie: "email: seu@email.com"</div>
+                    <div>2. "Paguei R$ 500 de aluguel"</div>
+                    <div>3. "Recebi R$ 2000 de salário"</div>
+                    <div>4. Acesse o dashboard com seu email</div>
                   </div>
                 </div>
               </div>
@@ -204,33 +215,42 @@ function App() {
               Acesse seu Dashboard
             </h2>
             <p className="text-lg text-slate-600">
-              Digite seu ID do Telegram para visualizar suas transações e gráficos
+              Digite seu email para visualizar suas transações e gráficos
             </p>
           </div>
 
           <Card className="max-w-md mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Bot className="w-5 h-5" />
-                ID do Telegram
+                <Mail className="w-5 h-5" />
+                Email de Acesso
               </CardTitle>
               <CardDescription>
-                Para encontrar seu ID, envie /start para o bot no Telegram
+                <div className="space-y-2 text-sm">
+                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                    <div className="font-medium text-blue-900 mb-1">📧 Como definir seu email:</div>
+                    <div className="text-blue-700">
+                      1. Abra o bot no Telegram<br/>
+                      2. Envie: <code className="bg-blue-100 px-1 rounded">email: seu@email.com</code><br/>
+                      3. Use o mesmo email aqui
+                    </div>
+                  </div>
+                </div>
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
-                  type="number"
-                  placeholder="Ex: 123456789"
-                  value={telegramId}
-                  onChange={(e) => setTelegramId(e.target.value)}
+                  type="email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
                 />
                 <Button 
                   type="submit" 
                   className="w-full bg-slate-900 hover:bg-slate-800"
-                  disabled={loading || !telegramId}
+                  disabled={loading || !email || !email.includes('@')}
                 >
                   {loading ? (
                     <>
@@ -268,7 +288,8 @@ function App() {
                     Dashboard de {dashboardData.user.name || 'Usuário'}
                   </h2>
                   <Badge variant="outline" className="text-slate-600">
-                    ID: {telegramId}
+                    <Mail className="w-3 h-3 mr-1" />
+                    {dashboardData.user.email}
                   </Badge>
                 </div>
 
@@ -410,13 +431,16 @@ function App() {
               </>
             ) : (
               <div className="text-center py-12">
-                <Bot className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <Mail className="w-16 h-16 text-slate-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                  Usuário não encontrado
+                  Email não encontrado
                 </h3>
-                <p className="text-slate-600">
-                  Envie uma mensagem para o bot no Telegram primeiro, depois tente novamente.
-                </p>
+                <div className="text-slate-600 space-y-2">
+                  <p>Certifique-se de ter enviado seu email para o bot primeiro.</p>
+                  <p className="text-sm bg-slate-100 p-3 rounded-lg inline-block">
+                    💡 No Telegram, envie: <code>email: {email || 'seu@email.com'}</code>
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -435,25 +459,37 @@ function App() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="bg-gradient-to-r from-blue-500 to-blue-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="w-8 h-8 text-white" />
+                <Mail className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                1. Envie uma Mensagem
+                1. Defina seu Email
               </h3>
               <p className="text-slate-600">
-                Digite suas transações em linguagem natural no bot do Telegram
+                Envie "email: seu@email.com" para o bot no Telegram
               </p>
             </div>
 
             <div className="text-center">
               <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">
+                2. Envie Transações
+              </h3>
+              <p className="text-slate-600">
+                Digite suas transações em linguagem natural no bot
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Bot className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                2. IA Processa
+                3. IA Processa
               </h3>
               <p className="text-slate-600">
                 Nossa IA extrai valor, categoria e descrição automaticamente
@@ -461,14 +497,14 @@ function App() {
             </div>
 
             <div className="text-center">
-              <div className="bg-gradient-to-r from-purple-500 to-purple-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <BarChart3 className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                3. Visualize Gráficos
+                4. Visualize Gráficos
               </h3>
               <p className="text-slate-600">
-                Acesse este painel para ver seus gastos organizados em gráficos
+                Acesse este painel com seu email para ver os relatórios
               </p>
             </div>
           </div>
@@ -494,8 +530,9 @@ function App() {
               <div className="text-sm text-slate-300 space-y-1">
                 <div>1. Encontre nosso bot no Telegram</div>
                 <div>2. Envie /start para começar</div>
-                <div>3. Digite suas transações naturalmente</div>
-                <div>4. Acesse este painel com seu ID</div>
+                <div>3. Defina seu email: email: seu@email.com</div>
+                <div>4. Digite suas transações naturalmente</div>
+                <div>5. Acesse este painel com seu email</div>
               </div>
             </div>
           </div>
